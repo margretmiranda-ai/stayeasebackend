@@ -1,11 +1,9 @@
 from functools import wraps
 
-from flask import g, jsonify
-from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
-from marshmallow import ValidationError
+from flask import g, jsonify, session
 
-from .extensions import db
-from .models import User
+from config import db
+from models import User
 
 
 def error(message, status=400, details=None):
@@ -33,15 +31,17 @@ def paginate(query, schema, page, per_page):
 
 
 def roles_required(*roles, approved_only=False):
-    """Protect a route: valid JWT + active user + one of the given roles.
-    With approved_only=True, managers must also have been approved by an admin."""
+    """Protect a route with a session, active user, and optional role restrictions."""
 
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            verify_jwt_in_request()
-            user = db.session.get(User, int(get_jwt_identity()))
+            user_id = session.get("user_id")
+            if user_id is None:
+                return error("Authentication required", 401)
+            user = db.session.get(User, user_id)
             if not user or not user.is_active:
+                session.clear()
                 return error("Account not found or blocked", 403)
             if roles and user.role not in roles:
                 return error("You do not have permission to do this", 403)

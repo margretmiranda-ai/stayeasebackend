@@ -1,12 +1,11 @@
-from flask import Blueprint, g, jsonify, request
-from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
+from flask import g, jsonify, request, session
 
-from ..extensions import db
-from ..models import City, Property, Unit, User
-from ..schemas import BrowseQuerySchema, PageSchema, PropertySchema
-from ..utils import error, load_or_400, paginate, roles_required
+from app import app
+from config import db
+from helpers import error, load_or_400, paginate, roles_required
+from models import City, Property, Unit, User
+from schemas import BrowseQuerySchema, PageSchema, PropertySchema
 
-properties_bp = Blueprint("properties", __name__)
 property_schema = PropertySchema()
 
 
@@ -31,7 +30,7 @@ def apply_property_filters(query, f):
     return query
 
 
-@properties_bp.get("")
+@app.get("/api/properties")
 def browse_properties():
     """Public: approved properties with their units. Supports city/area/type/price filters."""
     f = load_or_400(BrowseQuerySchema(), request.args.to_dict())
@@ -40,7 +39,7 @@ def browse_properties():
     return jsonify(paginate(query, property_schema, f["page"], f["per_page"]))
 
 
-@properties_bp.get("/mine")
+@app.get("/api/properties/mine")
 @roles_required("manager")
 def my_properties():
     f = load_or_400(PageSchema(), request.args.to_dict())
@@ -48,21 +47,22 @@ def my_properties():
     return jsonify(paginate(query, property_schema, f["page"], f["per_page"]))
 
 
-@properties_bp.get("/<int:property_id>")
+@app.get("/api/properties/<int:property_id>")
 def get_property(property_id):
     prop = db.get_or_404(Property, property_id)
     if prop.status != "approved":
         # unapproved listings are only visible to their manager or an admin
-        verify_jwt_in_request(optional=True)
-        identity = get_jwt_identity()
-        viewer = db.session.get(User, int(identity)) if identity else None
-        allowed = viewer and (viewer.role == "admin" or viewer.id == prop.manager_id)
+        user_id = session.get("user_id")
+        viewer = db.session.get(User, user_id) if user_id is not None else None
+        allowed = viewer and viewer.is_active and (
+            viewer.role == "admin" or viewer.id == prop.manager_id
+        )
         if not allowed:
             return error("Property not found", 404)
     return jsonify(property_schema.dump(prop))
 
 
-@properties_bp.post("")
+@app.post("/api/properties")
 @roles_required("manager", approved_only=True)
 def create_property():
     data = load_or_400(property_schema, request.get_json(silent=True))
@@ -74,7 +74,7 @@ def create_property():
     return jsonify(property_schema.dump(prop)), 201
 
 
-@properties_bp.put("/<int:property_id>")
+@app.patch("/api/properties/<int:property_id>")
 @roles_required("manager", approved_only=True)
 def update_property(property_id):
     prop = db.get_or_404(Property, property_id)
@@ -89,7 +89,7 @@ def update_property(property_id):
     return jsonify(property_schema.dump(prop))
 
 
-@properties_bp.delete("/<int:property_id>")
+@app.delete("/api/properties/<int:property_id>")
 @roles_required("manager", "admin")
 def delete_property(property_id):
     prop = db.get_or_404(Property, property_id)

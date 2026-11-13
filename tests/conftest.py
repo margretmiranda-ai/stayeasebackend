@@ -1,29 +1,32 @@
+import os
+
 import pytest
 
-from app import create_app
-from app.extensions import db
-from app.models import City, User
-from config import TestConfig
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+
+from app import app as flask_app
+from config import TestConfig, db
+from models import City, User
 
 
 @pytest.fixture()
 def app():
-    app = create_app(TestConfig)
-    with app.app_context():
+    flask_app.config.from_object(TestConfig)
+    with flask_app.app_context():
         db.create_all()
         db.session.add_all([City(name="Naivasha"), City(name="Nairobi")])
         admin = User(name="Admin", email="admin@test.com", role="admin")
         admin.set_password("Admin@1234")
         db.session.add(admin)
         db.session.commit()
-        yield app
+        yield flask_app
         db.session.remove()
         db.drop_all()
 
 
 @pytest.fixture()
 def client(app):
-    return app.test_client()
+    return app.test_client(use_cookies=False)
 
 
 def register(client, name, email, role):
@@ -33,9 +36,31 @@ def register(client, name, email, role):
 
 
 def login(client, email, password="Password1!"):
-    res = client.post("/api/auth/login", json={"email": email, "password": password})
+    auth_client = client.application.test_client()
+    res = auth_client.post("/api/auth/login", json={"email": email, "password": password})
     assert res.status_code == 200, res.get_json()
-    return {"Authorization": f"Bearer {res.get_json()['access_token']}"}
+    cookie = res.headers.get("Set-Cookie")
+    assert cookie is not None
+    return {"Cookie": cookie.split(";", 1)[0]}
+
+
+def make_listing(client, manager_h, admin_h, approve=True, price="20000.00", city="Naivasha"):
+    city_id = [c for c in client.get("/api/cities").get_json() if c["name"] == city][0]["id"]
+    prop = client.post("/api/properties", headers=manager_h, json={
+        "name": "Agunda Apartments", "city_id": city_id, "area": "Section 8",
+    }).get_json()
+    unit = client.post(f"/api/properties/{prop['id']}/units", headers=manager_h, json={
+        "unit_type": "2_bedroom", "price_per_month": price, "total_units": 2,
+    }).get_json()
+    if approve:
+        client.patch(f"/api/admin/properties/{prop['id']}/status", headers=admin_h, json={"status": "approved"})
+    return prop, unit
+
+
+def book(client, customer_h, unit_id, start="2026-12-01", end="2027-03-01"):
+    return client.post("/api/bookings", headers=customer_h, json={
+        "unit_id": unit_id, "start_date": start, "end_date": end,
+    })
 
 
 @pytest.fixture()

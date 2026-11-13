@@ -1,12 +1,12 @@
 from marshmallow import Schema, ValidationError, fields, validate, validates_schema
 
-from .models import BOOKING_STATUSES, PROPERTY_STATUSES, UNIT_TYPES
+from models import BOOKING_STATUSES, PROPERTY_STATUSES, UNIT_TYPES
 
 
 # ---------- Users / Auth ----------
 class RegisterSchema(Schema):
     """Input for sign-up. Admins are NOT created through this route
-    (use `flask seed` to create the first admin)."""
+    (use `seed.py` to create the first admin)."""
     name = fields.Str(required=True, validate=validate.Length(min=2, max=100))
     email = fields.Email(required=True)
     phone = fields.Str(validate=validate.Length(max=20))

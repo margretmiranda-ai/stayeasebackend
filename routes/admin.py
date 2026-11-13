@@ -1,11 +1,13 @@
 from decimal import Decimal
 
-from flask import Blueprint, g, jsonify, request
+from flask import g, jsonify, request
 from sqlalchemy import func
 
-from ..extensions import db
-from ..models import Booking, City, Property, Unit, User
-from ..schemas import (
+from app import app
+from config import db
+from helpers import error, load_or_400, paginate, roles_required
+from models import Booking, City, Property, Unit, User
+from schemas import (
     AdminUserUpdateSchema,
     PropertySchema,
     PropertyStatusSchema,
@@ -13,14 +15,12 @@ from ..schemas import (
     UserFilterSchema,
     UserSchema,
 )
-from ..utils import error, load_or_400, paginate, roles_required
 
-admin_bp = Blueprint("admin", __name__)
 user_schema = UserSchema()
 property_schema = PropertySchema()
 
 
-@admin_bp.get("/users")
+@app.get("/api/admin/users")
 @roles_required("admin")
 def list_users():
     f = load_or_400(UserFilterSchema(), request.args.to_dict())
@@ -32,7 +32,7 @@ def list_users():
     return jsonify(paginate(query, user_schema, f["page"], f["per_page"]))
 
 
-@admin_bp.patch("/users/<int:user_id>")
+@app.patch("/api/admin/users/<int:user_id>")
 @roles_required("admin")
 def update_user(user_id):
     user = db.get_or_404(User, user_id)
@@ -45,7 +45,7 @@ def update_user(user_id):
     return jsonify(user_schema.dump(user))
 
 
-@admin_bp.get("/properties")
+@app.get("/api/admin/properties")
 @roles_required("admin")
 def list_all_properties():
     """All properties in every status. Use ?status=pending to see those waiting for review."""
@@ -57,7 +57,7 @@ def list_all_properties():
     return jsonify(paginate(query, property_schema, f["page"], f["per_page"]))
 
 
-@admin_bp.patch("/properties/<int:property_id>/status")
+@app.patch("/api/admin/properties/<int:property_id>/status")
 @roles_required("admin")
 def set_property_status(property_id):
     prop = db.get_or_404(Property, property_id)
@@ -66,7 +66,7 @@ def set_property_status(property_id):
     return jsonify(property_schema.dump(prop))
 
 
-@admin_bp.get("/stats")
+@app.get("/api/admin/stats")
 @roles_required("admin")
 def stats():
     revenue = (

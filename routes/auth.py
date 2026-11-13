@@ -1,16 +1,17 @@
-from flask import Blueprint, g, jsonify, request
-from flask_jwt_extended import create_access_token
+from flask import g, jsonify, request, session
 
-from ..extensions import db
-from ..models import User
-from ..schemas import LoginSchema, RegisterSchema, UserSchema
-from ..utils import error, load_or_400, roles_required
+from app import app
+from config import db
+from email_service import send_auth_email
+from helpers import error, load_or_400, roles_required
+from models import User
+from schemas import LoginSchema, RegisterSchema, UserSchema
 
-auth_bp = Blueprint("auth", __name__)
 user_schema = UserSchema()
+session_user_schema = UserSchema(only=("id", "name", "role"))
 
 
-@auth_bp.post("/register")
+@app.post("/api/auth/register")
 def register():
     data = load_or_400(RegisterSchema(), request.get_json(silent=True))
     email = data["email"].lower()
@@ -28,6 +29,7 @@ def register():
     user.set_password(data["password"])
     db.session.add(user)
     db.session.commit()
+    send_auth_email(user, "registration")
 
     message = "Registered successfully"
     if user.role == "manager":
@@ -35,7 +37,7 @@ def register():
     return jsonify({"message": message, "user": user_schema.dump(user)}), 201
 
 
-@auth_bp.post("/login")
+@app.post("/api/auth/login")
 def login():
     data = load_or_400(LoginSchema(), request.get_json(silent=True))
     user = User.query.filter_by(email=data["email"].lower()).first()
@@ -44,11 +46,20 @@ def login():
     if not user.is_active:
         return error("This account has been blocked", 403)
 
-    token = create_access_token(identity=str(user.id), additional_claims={"role": user.role})
-    return jsonify({"access_token": token, "user": user_schema.dump(user)})
+    session.clear()
+    session["user_id"] = user.id
+    send_auth_email(user, "login")
+    return jsonify({"user": session_user_schema.dump(user)})
 
 
-@auth_bp.get("/me")
+@app.post("/api/auth/logout")
+@roles_required()
+def logout():
+    session.clear()
+    return jsonify({"message": "Logged out successfully"})
+
+
+@app.get("/api/auth/me")
 @roles_required()
 def me():
-    return jsonify(user_schema.dump(g.current_user))
+    return jsonify(session_user_schema.dump(g.current_user))

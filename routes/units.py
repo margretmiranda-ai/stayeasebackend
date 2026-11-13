@@ -1,16 +1,16 @@
-from flask import Blueprint, g, jsonify, request
+from flask import g, jsonify, request
 
-from ..extensions import db
-from ..models import City, Property, Unit
-from ..schemas import BrowseQuerySchema, UnitListSchema, UnitSchema
-from ..utils import error, load_or_400, paginate, roles_required
+from app import app
+from config import db
+from helpers import error, load_or_400, paginate, roles_required
+from models import City, Property, Unit
+from schemas import BrowseQuerySchema, UnitListSchema, UnitSchema
 
-units_bp = Blueprint("units", __name__)
 unit_schema = UnitSchema()
 unit_list_schema = UnitListSchema()
 
 
-@units_bp.get("/units")
+@app.get("/api/units")
 def browse_units():
     """Public: compare prices across managers. Filter by city, type and price, sort by price."""
     f = load_or_400(BrowseQuerySchema(), request.args.to_dict())
@@ -38,7 +38,7 @@ def browse_units():
     return jsonify(paginate(query, unit_list_schema, f["page"], f["per_page"]))
 
 
-@units_bp.get("/units/<int:unit_id>")
+@app.get("/api/units/<int:unit_id>")
 def get_unit(unit_id):
     unit = db.get_or_404(Unit, unit_id)
     if unit.property.status != "approved":
@@ -53,7 +53,7 @@ def _own_property_or_error(property_id):
     return prop, None
 
 
-@units_bp.post("/properties/<int:property_id>/units")
+@app.post("/api/properties/<int:property_id>/units")
 @roles_required("manager", approved_only=True)
 def create_unit(property_id):
     prop, err = _own_property_or_error(property_id)
@@ -70,7 +70,7 @@ def create_unit(property_id):
     return jsonify(unit_schema.dump(unit)), 201
 
 
-@units_bp.put("/units/<int:unit_id>")
+@app.put("/api/units/<int:unit_id>")
 @roles_required("manager", approved_only=True)
 def update_unit(unit_id):
     unit = db.get_or_404(Unit, unit_id)
@@ -86,7 +86,7 @@ def update_unit(unit_id):
     return jsonify(unit_schema.dump(unit))
 
 
-@units_bp.delete("/units/<int:unit_id>")
+@app.delete("/api/units/<int:unit_id>")
 @roles_required("manager", "admin")
 def delete_unit(unit_id):
     unit = db.get_or_404(Unit, unit_id)

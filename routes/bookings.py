@@ -1,14 +1,14 @@
 from decimal import Decimal
 from math import ceil
 
-from flask import Blueprint, g, jsonify, request
+from flask import g, jsonify, request
 
-from ..extensions import db
-from ..models import Booking, Property, Unit
-from ..schemas import BookingSchema, BookingStatusSchema, PageSchema, StatusFilterSchema
-from ..utils import error, load_or_400, paginate, roles_required
+from app import app
+from config import db
+from helpers import error, load_or_400, paginate, roles_required
+from models import Booking, Property, Unit
+from schemas import BookingSchema, BookingStatusSchema, PageSchema, StatusFilterSchema
 
-bookings_bp = Blueprint("bookings", __name__)
 booking_schema = BookingSchema()
 
 # current status -> statuses it may move to
@@ -31,7 +31,7 @@ def can_view(user, booking):
     return booking.unit.property.manager_id == user.id
 
 
-@bookings_bp.post("")
+@app.post("/api/bookings")
 @roles_required("customer")
 def create_booking():
     data = load_or_400(booking_schema, request.get_json(silent=True))
@@ -55,7 +55,7 @@ def create_booking():
     return jsonify(booking_schema.dump(booking)), 201
 
 
-@bookings_bp.get("/mine")
+@app.get("/api/bookings/mine")
 @roles_required("customer")
 def my_bookings():
     f = load_or_400(StatusFilterSchema(), request.args.to_dict())
@@ -66,7 +66,7 @@ def my_bookings():
     return jsonify(paginate(query, booking_schema, f["page"], f["per_page"]))
 
 
-@bookings_bp.get("")
+@app.get("/api/bookings")
 @roles_required("manager", "admin")
 def list_bookings():
     """Managers see bookings for their own properties; admins see everything."""
@@ -84,7 +84,7 @@ def list_bookings():
     return jsonify(paginate(query, booking_schema, f["page"], f["per_page"]))
 
 
-@bookings_bp.get("/<int:booking_id>")
+@app.get("/api/bookings/<int:booking_id>")
 @roles_required()
 def get_booking(booking_id):
     booking = db.get_or_404(Booking, booking_id)
@@ -93,7 +93,7 @@ def get_booking(booking_id):
     return jsonify(booking_schema.dump(booking))
 
 
-@bookings_bp.patch("/<int:booking_id>/status")
+@app.patch("/api/bookings/<int:booking_id>/status")
 @roles_required()
 def update_booking_status(booking_id):
     booking = db.get_or_404(Booking, booking_id)

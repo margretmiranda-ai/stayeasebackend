@@ -12,38 +12,51 @@ Flask + SQLAlchemy REST API for a property renting app with three roles:
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env               # then edit the secrets
 
-flask --app run seed --demo        # creates tables, cities, the admin, and demo data
-python run.py                      # http://localhost:5000
+python seed.py                     # resets all app data and loads demo data
+python app.py                      # http://localhost:5555
 pytest                             # run the tests
 ```
 
-Default admin (change it in `.env`): `admin@rental.com` / `Admin@1234`
-Demo accounts (only with `--demo`): `manager@rental.com` / `Manager@1234`, `customer@rental.com` / `Customer@1234`
+To enable registration and login emails, copy `.env.example` to `.env`, then set
+`RESEND_API_KEY` and `RESEND_FROM_EMAIL` to your Resend API key and an allowed
+sender address. Emails are sent by the backend; the API key must not be added
+to a frontend application. If either setting is missing or Resend cannot
+accept a message, the event is recorded in the backend logs and account
+registration/login still succeeds. Resend may require a verified domain or
+sender before allowing delivery to your intended recipients.
 
-Using migrations instead of `create_all`: `flask --app run db init`, `db migrate`, `db upgrade`.
+**Warning:** `python seed.py` deletes existing application data before inserting the demo data. It creates tables if needed. The admin credentials come from `.env` (defaults: `admin@rental.com` / `Admin@1234`). Demo accounts: `manager@rental.com` / `Manager@1234`, `pending@rental.com` / `Pending@1234`, `customer@rental.com` / `Customer@1234`, and `customer2@rental.com` / `Customer2@1234`.
+
+Apply the existing database migrations with `flask --app app db upgrade`.
+
+## Postman
+
+Start the server with `python app.py`, then send requests to `http://127.0.0.1:5555`. Log in at `POST /api/auth/login` before calling protected endpoints; Postman will reuse the session cookie for requests to the same host.
 
 ## Project layout
 
 ```
-app/
-  __init__.py        app factory, error handlers, `flask seed` command
-  extensions.py      db, jwt, migrate, cors
-  models.py          User, City, Property, Unit, Booking
-  schemas.py         Marshmallow schemas (validation + serialization)
-  utils.py           roles_required decorator, pagination, error helper
-  routes/            auth, cities, properties, units, bookings, admin
-tests/               pytest suite (18 tests)
-config.py            settings from environment
-run.py               entry point
+app.py               Flask app, route imports, and error handlers
+config.py            app settings and database extension
+models.py            User, City, Property, Unit, Booking
+schemas.py           Marshmallow validation and serialization
+helpers.py           auth decorator, pagination, error helpers
+routes/              direct app routes: auth, cities, properties, units, bookings, admin
+tests/               pytest suite
+migrations/          database schema migrations
+seed.py              resets and reloads demo data
 ```
 
 ## Authentication
 
-Log in to get a token, then send it on protected routes: `Authorization: Bearer <token>`.
+Log in at `POST /api/auth/login` to establish a Flask session. The server sends a signed session cookie; send that cookie with protected requests. In Postman, use the same host for login and later requests so its cookie jar can reuse the cookie. Browser clients calling this API from another origin must use `credentials: "include"` with `fetch`.
+Successful login and `GET /api/auth/me` return only the user's `id`, `name`, and `role`.
+
+`POST /api/auth/logout` clears the current session cookie. Flask's default session is stored in a signed cookie, not in the database, so keep only non-sensitive session data in it. For HTTPS deployments, set `SESSION_COOKIE_SECURE=true`; the default `SESSION_COOKIE_SAMESITE=Lax` can be changed when the frontend is hosted on a different site.
+
 Managers register with `is_approved = false` and cannot create properties until an admin approves them.
-Admins cannot be created through the API. They come from `flask seed`.
+Admins cannot be created through the API. The admin demo account is created by `seed.py`.
 
 ## Endpoints
 
@@ -52,7 +65,8 @@ Lists are paginated: `?page=1&per_page=10` returns `{items, page, per_page, tota
 | Method | Path | Who | What |
 |---|---|---|---|
 | POST | `/api/auth/register` | public | Sign up as `manager` or `customer` |
-| POST | `/api/auth/login` | public | Get an access token |
+| POST | `/api/auth/login` | public | Start a session |
+| POST | `/api/auth/logout` | any user | Clear the current session |
 | GET | `/api/auth/me` | any user | Current user |
 | GET | `/api/cities` | public | List cities (for dropdowns) |
 | POST / PUT / DELETE | `/api/cities`, `/api/cities/<id>` | admin | Manage cities |
@@ -60,7 +74,7 @@ Lists are paginated: `?page=1&per_page=10` returns `{items, page, per_page, tota
 | GET | `/api/properties/<id>` | public | One property with its units (unapproved: owner/admin only) |
 | GET | `/api/properties/mine` | manager | My properties, any status |
 | POST | `/api/properties` | approved manager | Register a property (`city_id` required) |
-| PUT | `/api/properties/<id>` | owner | Edit |
+| PATCH | `/api/properties/<id>` | owner | Edit |
 | DELETE | `/api/properties/<id>` | owner or admin | Delete |
 | GET | `/api/units` | public | Compare prices across managers. Same filters plus `sort=price_asc`, `price_desc` or `newest` |
 | GET | `/api/units/<id>` | public | One unit |
@@ -84,20 +98,3 @@ Lists are paginated: `?page=1&per_page=10` returns `{items, page, per_page, tota
 - Booking status flow: `pending` -> `confirmed` -> `completed`, and `pending` or `confirmed` -> `cancelled`.
 - Customers can only cancel their own bookings. Managers can confirm, cancel or complete bookings for their own properties.
 - Confirming a booking reduces the unit's `available_units` by one. Cancelling or completing a confirmed booking gives it back.
-
-## Example requests
-
-```bash
-# manager registers a property (city_id comes from GET /api/cities)
-curl -X POST localhost:5000/api/properties -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Agunda Apartments", "city_id": 4, "area": "Section 8"}'
-
-# add a 2-bedroom at KES 20,000 per month, 3 available
-curl -X POST localhost:5000/api/properties/1/units -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"unit_type": "2_bedroom", "price_per_month": "20000", "total_units": 3}'
-
-# customer compares cheapest units in Naivasha
-curl "localhost:5000/api/units?city=Naivasha&sort=price_asc"
-```
