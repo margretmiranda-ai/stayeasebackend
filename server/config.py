@@ -36,3 +36,5 @@ class Config:
 class TestConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    RESEND_API_KEY = ""
+    RESEND_FROM_EMAIL = ""

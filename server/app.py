@@ -1,3 +1,4 @@
+import os
 import sys
 
 from flask import Flask, jsonify
@@ -6,13 +7,14 @@ from flask_migrate import Migrate
 from marshmallow import ValidationError
 from werkzeug.exceptions import HTTPException
 
-from config import Config, db
+from server.config import Config, db
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
 db.init_app(app)
-migrate = Migrate(app, db)
+migrations_dir = os.path.join(os.path.dirname(__file__), "migrations")
+migrate = Migrate(app, db, directory=migrations_dir)
 CORS(
     app,
     resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}},
@@ -40,12 +42,10 @@ def handle_http(err):
     return jsonify({"error": err.description}), err.code
 
 
-if __name__ == "__main__":
-    sys.modules["app"] = sys.modules[__name__]
+sys.modules.setdefault("app", sys.modules[__name__])
+sys.modules.setdefault("server.app", sys.modules[__name__])
 
-
-from routes import admin, auth, bookings, cities, properties, units
-
+from server.routes import admin, auth, bookings, cities, properties, units
 
 if __name__ == "__main__":
     app.run(debug=True, port=5555)

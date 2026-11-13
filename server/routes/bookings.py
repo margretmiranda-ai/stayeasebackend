@@ -3,11 +3,11 @@ from math import ceil
 
 from flask import g, jsonify, request
 
-from app import app
-from config import db
-from helpers import error, load_or_400, paginate, roles_required
-from models import Booking, Property, Unit
-from schemas import BookingSchema, BookingStatusSchema, PageSchema, StatusFilterSchema
+from server.app import app
+from server.config import db
+from server.helpers import error, load_or_400, paginate, roles_required
+from server.models import Booking, Property, Unit
+from server.schemas import BookingSchema, BookingStatusSchema, PageSchema, StatusFilterSchema
 
 booking_schema = BookingSchema()
 

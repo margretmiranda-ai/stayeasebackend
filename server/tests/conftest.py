@@ -4,9 +4,9 @@ import pytest
 
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
-from app import app as flask_app
-from config import TestConfig, db
-from models import City, User
+from server.app import app as flask_app
+from server.config import TestConfig, db
+from server.models import City, User
 
 
 @pytest.fixture()

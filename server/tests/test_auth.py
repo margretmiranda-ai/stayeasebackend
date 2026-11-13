@@ -16,7 +16,7 @@ def test_register_login_me(client):
 def test_registration_sends_welcome_email(client, monkeypatch):
     sent = []
     monkeypatch.setattr(
-        "routes.auth.send_auth_email",
+        "server.routes.auth.send_auth_email",
         lambda user, event: sent.append((user.email, event)),
     )
 
@@ -30,7 +30,7 @@ def test_successful_login_sends_notification(client, monkeypatch):
     register(client, "Carl", "carl@test.com", "customer")
     sent = []
     monkeypatch.setattr(
-        "routes.auth.send_auth_email",
+        "server.routes.auth.send_auth_email",
         lambda user, event: sent.append((user.email, event)),
     )
 

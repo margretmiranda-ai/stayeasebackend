@@ -1,10 +1,10 @@
 from flask import g, jsonify, request, session
 
-from app import app
-from config import db
-from helpers import error, load_or_400, paginate, roles_required
-from models import City, Property, Unit, User
-from schemas import BrowseQuerySchema, PageSchema, PropertySchema
+from server.app import app
+from server.config import db
+from server.helpers import error, load_or_400, paginate, roles_required
+from server.models import City, Property, Unit, User
+from server.schemas import BrowseQuerySchema, PageSchema, PropertySchema
 
 property_schema = PropertySchema()
 

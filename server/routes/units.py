@@ -1,10 +1,10 @@
 from flask import g, jsonify, request
 
-from app import app
-from config import db
-from helpers import error, load_or_400, paginate, roles_required
-from models import City, Property, Unit
-from schemas import BrowseQuerySchema, UnitListSchema, UnitSchema
+from server.app import app
+from server.config import db
+from server.helpers import error, load_or_400, paginate, roles_required
+from server.models import City, Property, Unit
+from server.schemas import BrowseQuerySchema, UnitListSchema, UnitSchema
 
 unit_schema = UnitSchema()
 unit_list_schema = UnitListSchema()

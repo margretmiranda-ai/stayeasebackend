@@ -1,7 +1,7 @@
 import json
 from types import SimpleNamespace
 
-from email_service import RESEND_EMAIL_URL, send_auth_email
+from server.email_service import RESEND_EMAIL_URL, send_auth_email
 
 
 def test_sends_registration_email_through_resend(app, monkeypatch):
@@ -23,7 +23,7 @@ def test_sends_registration_email_through_resend(app, monkeypatch):
         captured["timeout"] = timeout
         return Response()
 
-    monkeypatch.setattr("email_service.urlopen", fake_urlopen)
+    monkeypatch.setattr("server.email_service.urlopen", fake_urlopen)
     user = SimpleNamespace(name="Carl", email="carl@test.com")
 
     with app.app_context():

@@ -1,10 +1,10 @@
 from flask import jsonify, request
 
-from app import app
-from config import db
-from helpers import error, load_or_400, roles_required
-from models import City
-from schemas import CitySchema
+from server.app import app
+from server.config import db
+from server.helpers import error, load_or_400, roles_required
+from server.models import City
+from server.schemas import CitySchema
 
 city_schema = CitySchema()
 

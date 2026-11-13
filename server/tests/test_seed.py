@@ -1,6 +1,6 @@
-from config import db
-from models import Booking, City, Property, Unit, User
-from seed import seed_database
+from server.config import db
+from server.models import Booking, City, Property, Unit, User
+from server.seed import seed_database
 
 
 def test_seed_resets_and_populates_all_tables(app):

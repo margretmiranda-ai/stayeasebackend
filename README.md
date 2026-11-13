@@ -8,17 +8,20 @@ Flask + SQLAlchemy REST API for a property renting app with three roles:
 
 ## Setup
 
-```bash
-python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+Run commands from the repository root:
 
-python seed.py                     # resets all app data and loads demo data
-python app.py                      # http://localhost:5555
-pytest                             # run the tests
+```bash
+python3 -m venv server/venv
+source server/venv/bin/activate    # Windows: server\venv\Scripts\activate
+pip install -r server/requirements.txt
+cp server/.env.example server/.env # only on first setup; keep .env private
+
+python -m server.app               # http://localhost:5555
+python -m server.seed              # resets all app data and loads demo data
+pytest server/tests
 ```
 
-To enable registration and login emails, copy `.env.example` to `.env`, then set
+To enable registration and login emails, set
 `RESEND_API_KEY` and `RESEND_FROM_EMAIL` to your Resend API key and an allowed
 sender address. Emails are sent by the backend; the API key must not be added
 to a frontend application. If either setting is missing or Resend cannot
@@ -26,26 +29,26 @@ accept a message, the event is recorded in the backend logs and account
 registration/login still succeeds. Resend may require a verified domain or
 sender before allowing delivery to your intended recipients.
 
-**Warning:** `python seed.py` deletes existing application data before inserting the demo data. It creates tables if needed. The admin credentials come from `.env` (defaults: `admin@rental.com` / `Admin@1234`). Demo accounts: `manager@rental.com` / `Manager@1234`, `pending@rental.com` / `Pending@1234`, `customer@rental.com` / `Customer@1234`, and `customer2@rental.com` / `Customer2@1234`.
+**Warning:** `python -m server.seed` deletes existing application data before inserting the demo data. It creates tables if needed. The admin credentials come from `server/.env` (defaults: `admin@rental.com` / `Admin@1234`). Demo accounts: `manager@rental.com` / `Manager@1234`, `pending@rental.com` / `Pending@1234`, `customer@rental.com` / `Customer@1234`, and `customer2@rental.com` / `Customer2@1234`.
 
-Apply the existing database migrations with `flask --app app db upgrade`.
+Apply the existing database migrations with `flask --app server.app db upgrade`.
 
 ## Postman
 
-Start the server with `python app.py`, then send requests to `http://127.0.0.1:5555`. Log in at `POST /api/auth/login` before calling protected endpoints; Postman will reuse the session cookie for requests to the same host.
+Start the server with `python -m server.app`, then send requests to `http://127.0.0.1:5555`. Log in at `POST /api/auth/login` before calling protected endpoints; Postman will reuse the session cookie for requests to the same host.
 
 ## Project layout
 
 ```
-app.py               Flask app, route imports, and error handlers
-config.py            app settings and database extension
-models.py            User, City, Property, Unit, Booking
-schemas.py           Marshmallow validation and serialization
-helpers.py           auth decorator, pagination, error helpers
-routes/              direct app routes: auth, cities, properties, units, bookings, admin
-tests/               pytest suite
-migrations/          database schema migrations
-seed.py              resets and reloads demo data
+server/app.py                 Flask app, route imports, and error handlers
+server/config.py              app settings and database extension
+server/models.py              User, City, Property, Unit, Booking
+server/schemas.py             Marshmallow validation and serialization
+server/helpers.py             auth decorator, pagination, error helpers
+server/routes/                API route modules
+server/tests/                 pytest suite
+server/migrations/            database schema migrations
+server/seed.py                resets and reloads demo data
 ```
 
 ## Authentication

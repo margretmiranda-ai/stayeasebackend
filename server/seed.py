@@ -3,9 +3,9 @@ from decimal import Decimal
 
 from flask import current_app
 
-from app import app
-from config import db
-from models import Booking, City, Property, Unit, User
+from server.app import app
+from server.config import db
+from server.models import Booking, City, Property, Unit, User
 
 
 def seed_database():

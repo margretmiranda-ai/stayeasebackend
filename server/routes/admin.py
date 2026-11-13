@@ -3,11 +3,11 @@ from decimal import Decimal
 from flask import g, jsonify, request
 from sqlalchemy import func
 
-from app import app
-from config import db
-from helpers import error, load_or_400, paginate, roles_required
-from models import Booking, City, Property, Unit, User
-from schemas import (
+from server.app import app
+from server.config import db
+from server.helpers import error, load_or_400, paginate, roles_required
+from server.models import Booking, City, Property, Unit, User
+from server.schemas import (
     AdminUserUpdateSchema,
     PropertySchema,
     PropertyStatusSchema,

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from config import db
+from server.config import db
 
 # Allowed values (validated in the schemas)
 ROLES = ("admin", "manager", "customer")

@@ -1,6 +1,6 @@
 from marshmallow import Schema, ValidationError, fields, validate, validates_schema
 
-from models import BOOKING_STATUSES, PROPERTY_STATUSES, UNIT_TYPES
+from server.models import BOOKING_STATUSES, PROPERTY_STATUSES, UNIT_TYPES
 
 
 # ---------- Users / Auth ----------

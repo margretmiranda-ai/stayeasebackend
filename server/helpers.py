@@ -2,8 +2,8 @@ from functools import wraps
 
 from flask import g, jsonify, session
 
-from config import db
-from models import User
+from server.config import db
+from server.models import User
 
 
 def error(message, status=400, details=None):

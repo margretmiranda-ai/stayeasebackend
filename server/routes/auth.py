@@ -1,11 +1,11 @@
 from flask import g, jsonify, request, session
 
-from app import app
-from config import db
-from email_service import send_auth_email
-from helpers import error, load_or_400, roles_required
-from models import User
-from schemas import LoginSchema, RegisterSchema, UserSchema
+from server.app import app
+from server.config import db
+from server.email_service import send_auth_email
+from server.helpers import error, load_or_400, roles_required
+from server.models import User
+from server.schemas import LoginSchema, RegisterSchema, UserSchema
 
 user_schema = UserSchema()
 session_user_schema = UserSchema(only=("id", "name", "role"))
